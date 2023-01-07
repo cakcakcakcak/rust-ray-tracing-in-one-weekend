@@ -1,17 +1,17 @@
-use super::vec::{Point3, Vec3};
-use super::ray::Ray;
 use super::hit::{Hit, HitRecord};
+use super::ray::Ray;
+use super::vec::{Point3, Vec3};
 
 pub struct Sphere {
     center: Point3,
-    radius: f64
+    radius: f64,
 }
 
 impl Sphere {
     pub fn new(cen: Point3, r: f64) -> Sphere {
         Sphere {
             center: cen,
-            radius: r
+            radius: r,
         }
     }
 }
@@ -43,7 +43,7 @@ impl Hit for Sphere {
             t: root,
             p: p,
             normal: Vec3::new(0.0, 0.0, 0.0),
-            front_face: false
+            front_face: false,
         };
 
         let outward_normal = (rec.p - self.center) / self.radius;

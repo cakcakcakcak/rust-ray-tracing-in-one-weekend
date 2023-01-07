@@ -1,20 +1,26 @@
-mod vec;
-mod ray;
-mod hit;
-mod sphere;
 mod camera;
+mod hit;
+mod ray;
+mod sphere;
+mod vec;
 
-use vec::{Vec3, Point3, Color};
-use ray::Ray;
-use hit::{Hit, World};
-use sphere::Sphere;
 use camera::Camera;
-use std::io::{stderr, Write};
+use hit::{Hit, World};
 use rand::Rng;
+use ray::Ray;
+use sphere::Sphere;
+use std::io::{stderr, Write};
+use vec::{Color, Point3, Vec3};
 
-fn ray_color(r: &Ray, world: &World) -> Color {
-    if let Some(rec) = world.hit(r, 0.0, f64::INFINITY) {
-        0.5 * (rec.normal + Color::new(1.0, 1.0, 1.0))
+fn ray_color(r: &Ray, world: &World, depth: u64) -> Color {
+    if depth <= 0 {
+        return Color::new(0.0, 0.0, 0.0);
+    }
+    if let Some(rec) = world.hit(r, 0.001, f64::INFINITY) {
+        let target = rec.p + Vec3::random_in_hemisphere(rec.normal);
+        // let target = rec.p + rec.normal + Vec3::random_in_unit_sphere().normalized();
+        let r = Ray::new(rec.p, target - rec.p);
+        0.5 * ray_color(&r, world, depth - 1)
     } else {
         let unit_direction = r.direction().normalized();
         let t = 0.5 * (unit_direction.y() + 1.0);
@@ -25,14 +31,17 @@ fn ray_color(r: &Ray, world: &World) -> Color {
 fn main() {
     // Image
     const ASPECT_RATIO: f64 = 16.0 / 9.0;
-    const IMAGE_WIDTH: u64 = 2_560;
+    const IMAGE_WIDTH: u64 = 1_024;
     const IMAGE_HEIGHT: u64 = ((IMAGE_WIDTH as f64) / ASPECT_RATIO) as u64;
     const SAMPLES_PER_PIXEL: u64 = 100;
+    const MAX_DEPTH: u64 = 5;
 
     // World
     let mut world = World::new();
+    world.push(Box::new(Sphere::new(Point3::new(-1.0, 0.0, -1.0), 0.5)));
     world.push(Box::new(Sphere::new(Point3::new(0.0, 0.0, -1.0), 0.5)));
-    world.push(Box::new(Sphere::new(Point3::new(0.0, -100.5, -1.0), 100.0)));
+    world.push(Box::new(Sphere::new(Point3::new(1.0, 0.0, -1.0), 0.5)));
+    world.push(Box::new(Sphere::new(Point3::new(0.0, -50.5, -1.0), 50.0)));
 
     // Camera
     let cam = Camera::new();
@@ -56,7 +65,7 @@ fn main() {
                 let v = ((j as f64) + random_v) / ((IMAGE_HEIGHT - 1) as f64);
 
                 let r = cam.get_ray(u, v);
-                pixel_color += ray_color(&r, &world);
+                pixel_color += ray_color(&r, &world, MAX_DEPTH);
             }
             println!("{}", pixel_color.format_color(SAMPLES_PER_PIXEL));
         }
