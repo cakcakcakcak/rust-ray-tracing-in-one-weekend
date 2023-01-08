@@ -5,7 +5,7 @@ mod sphere;
 mod vec;
 mod material;
 
-use vec::{Color, Point3};
+use vec::{Color, Point3, Vec3};
 use camera::Camera;
 use hit::{Hit, World};
 use rand::Rng;
@@ -15,6 +15,8 @@ use material::{Lambertian, Metal};
 use std::io::{stderr, Write};
 use std::sync::Arc;
 use rayon::prelude::*;
+
+use crate::material::Dielectric;
 
 fn ray_color(r: &Ray, world: &World, depth: u64) -> Color {
     if depth <= 0 {
@@ -36,32 +38,38 @@ fn ray_color(r: &Ray, world: &World, depth: u64) -> Color {
 fn main() {
     rayon::ThreadPoolBuilder::new().num_threads(8).build_global().unwrap();
 
-    // Image
     const ASPECT_RATIO: f64 = 3.0 / 2.0;
-    const IMAGE_WIDTH: u64 = 1_024;
+    const IMAGE_WIDTH: u64 = 2_048;
     const IMAGE_HEIGHT: u64 = ((IMAGE_WIDTH as f64) / ASPECT_RATIO) as u64;
     const SAMPLES_PER_PIXEL: u64 = 1_000;
-    const MAX_DEPTH: u64 = 100;
+    const MAX_DEPTH: u64 = 10;
+    const VERTICAL_FIELD_OF_VIEW: f64 = 90.0;
 
-    // World
     let mut world = World::new();
+
     let mat_ground = Arc::new(Lambertian::new(Color::new(0.8, 0.8, 0.0)));
-    let mat_center = Arc::new(Metal::new(Color::new(0.7, 0.3, 0.3)));
-    let mat_left = Arc::new(Metal::new(Color::new(0.8, 0.8, 0.8)));
+    let mat_center = Arc::new(Lambertian::new(Color::new(0.1, 0.2, 0.5)));
+    let mat_left = Arc::new(Dielectric::new(1.5));
+    // let mat_left_inner = Arc::new(Dielectric::new(1.5));
     let mat_right = Arc::new(Metal::new(Color::new(0.8, 0.6, 0.2)));
 
     let sphere_ground = Sphere::new(Point3::new(0.0, -100.5, -1.0), 100.0, mat_ground);
     let sphere_center = Sphere::new(Point3::new(0.0, 0.0, -1.0), 0.5, mat_center);
     let sphere_left = Sphere::new(Point3::new(-1.0, 0.0, -1.0), 0.5, mat_left);
+    // let sphere_left_inner = Sphere::new(Point3::new(-1.0, 0.0, -1.0), -0.4, mat_left_inner);
     let sphere_right = Sphere::new(Point3::new(1.0, 0.0, -1.0), 0.5, mat_right);
 
     world.push(Box::new(sphere_ground));
     world.push(Box::new(sphere_center));
     world.push(Box::new(sphere_left));
+    // world.push(Box::new(sphere_left_inner));
     world.push(Box::new(sphere_right));
 
-    // Camera
-    let cam = Camera::new();
+    let cam = Camera::new(Point3::new(-2.0, 2.0, 1.0),
+                          Point3::new(0.0, 0.0, -1.0),
+                          Vec3::new(0.0, 1.0, 0.0),
+                          VERTICAL_FIELD_OF_VIEW,
+                          ASPECT_RATIO);
 
     println!("P3");
     println!("{} {}", IMAGE_WIDTH, IMAGE_HEIGHT);
